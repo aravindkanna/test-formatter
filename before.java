@@ -191,67 +191,17 @@ public class IPCGCallDetailCreator implements CallDetailCreator
             throw new HomeException(message);
         }
 
-        final CallDetail callDetail = new CallDetail();
-        callDetail.setBAN(ban);
-        callDetail.setSubscriberID(subscriber.getId());
-        callDetail.setTranDate(data.getTranDate());
-        callDetail.setCallType(data.getCallType());
-        callDetail.setPostedDate(new Date());
-        callDetail.setChargedMSISDN(data.getChargedMSISDN());
         if (RateUnitEnum.SEC == data.getUnitType() || RateUnitEnum.MIN == data.getUnitType())
         {
             final Time duration = new Time();
             duration.set(0, 0, (int) data.getUsage(), 0);
-            callDetail.setDuration(duration);
         }
-        else
-        {
-            callDetail.setDataUsage(data.getUsage());
-        }
-        callDetail.setVariableRateUnit(data.getUnitType());
-        /*
-         * The unit of the Charge values provided by the IPCG ER 501s is tenths of the
-         * lowest denomination of the given currency.
-         */
-        callDetail.setCharge(Math.round(data.getCharge() / 10.0));
-        callDetail.setSpid(acct.getSpid());
-        callDetail.setTaxAuthority1(SpidSupport.getDataTaxAuthority(ctx, acct.getSpid()));
-
         /*
          *  There can be max of 3 glCodes
          *  TT#12111334023
          */
         StringTokenizer glCodes = new StringTokenizer(data.getGlCode(), "|");
-        if (data.getGlCode() == null || data.getGlCode().trim().equals("")
-                || glCodes.countTokens() == 0) {
-            callDetail.setGLCode(callType.getGLCode());
-        } else {
-            setComponentGLCodes(callDetail,glCodes);
-        }
-
-        callDetail.setComponentCharge1(data.getComponentCharge1());
-        callDetail.setComponentCharge2(data.getComponentCharge2());
-        callDetail.setComponentCharge3(data.getComponentCharge3());
-
-        callDetail.setBillingOption(data.getBillingOption());
-        callDetail.setCallID(Long.toString(data.getIPCGDataID()));
-
-        callDetail.setLocationCountry(data.getLocationCountry());
-        callDetail.setLocationOperator(data.getLocationOperator());
-
-        callDetail.setApn(data.getApn());
-
-        callDetail.setTeleserviceType(TeleserviceTypeEnum.DATA);
-
-        //For CTaxation support feature
-        callDetail.setHomeProv(callDetail.getChargedMSISDN());
-
-        //new fields for PTUB feature
-        callDetail.setSecondaryBalanceIndicator(data.getSecondaryBalanceIndicator());
-        callDetail.setSecondaryBalanceChargedAmount(data.getSecondaryBalanceChargedAmount());
-
-        callDetail.setRatingRule(data.getRateRuleId());
-
+		callDetail = autofix0callDetail(ctx, data, ban, subscriber, acct, callType, duration, glCodes);
         return callDetail;
     }
 
@@ -341,4 +291,45 @@ public class IPCGCallDetailCreator implements CallDetailCreator
      */
     private static IPCGCallDetailCreator instance;
     public final static String DEFAULT_TABLE_NAME = "XIPCGData";
+	private CallDetail autofix0callDetail(Context ctx, IPCGData data, String ban, Subscriber subscriber, Account acct,
+			CallType callType, Time duration, StringTokenizer glCodes) {
+		if (subscriber != null) {
+			ban = subscriber.getBAN();
+		}
+		final CallDetail callDetail = new CallDetail();
+		callDetail.setBAN(ban);
+		callDetail.setSubscriberID(subscriber.getId());
+		callDetail.setTranDate(data.getTranDate());
+		callDetail.setCallType(data.getCallType());
+		callDetail.setPostedDate(new Date());
+		callDetail.setChargedMSISDN(data.getChargedMSISDN());
+		if (RateUnitEnum.SEC == data.getUnitType() || RateUnitEnum.MIN == data.getUnitType()) {
+			callDetail.setDuration(duration);
+		} else {
+			callDetail.setDataUsage(data.getUsage());
+		}
+		callDetail.setVariableRateUnit(data.getUnitType());
+		callDetail.setCharge(Math.round(data.getCharge() / 10.0));
+		callDetail.setSpid(acct.getSpid());
+		callDetail.setTaxAuthority1(SpidSupport.getDataTaxAuthority(ctx, acct.getSpid()));
+		if (data.getGlCode() == null || data.getGlCode().trim().equals("") || glCodes.countTokens() == 0) {
+			callDetail.setGLCode(callType.getGLCode());
+		} else {
+			setComponentGLCodes(callDetail, glCodes);
+		}
+		callDetail.setComponentCharge1(data.getComponentCharge1());
+		callDetail.setComponentCharge2(data.getComponentCharge2());
+		callDetail.setComponentCharge3(data.getComponentCharge3());
+		callDetail.setBillingOption(data.getBillingOption());
+		callDetail.setCallID(Long.toString(data.getIPCGDataID()));
+		callDetail.setLocationCountry(data.getLocationCountry());
+		callDetail.setLocationOperator(data.getLocationOperator());
+		callDetail.setApn(data.getApn());
+		callDetail.setTeleserviceType(TeleserviceTypeEnum.DATA);
+		callDetail.setHomeProv(callDetail.getChargedMSISDN());
+		callDetail.setSecondaryBalanceIndicator(data.getSecondaryBalanceIndicator());
+		callDetail.setSecondaryBalanceChargedAmount(data.getSecondaryBalanceChargedAmount());
+		callDetail.setRatingRule(data.getRateRuleId());
+		return callDetail;
+	}
 }
